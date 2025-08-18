@@ -4,10 +4,8 @@ import sys
 import tempfile
 from dotenv import load_dotenv
 import pandas as pd
-import psycopg
 from database_operations import upsert_data_to_database
-from exceptions import DataExistsError, DataNotFoundError
-from scrape import download_excel_file
+from scrape import download_excel_file, launch_browser
 from utils import date_range
 
 def main():
@@ -38,19 +36,27 @@ def main():
 
     with tempfile.TemporaryDirectory() as temp_dir:
         print(f"Temporary directory created at: {temp_dir}")
+        
+        playwright_instance = None
+        browser = None
 
-        for date in dates:
-            try:
-                file_path = download_excel_file(temp_dir, date)
-                df = pd.read_excel(file_path)
-                df["Date"] = date
-                stock_summary_data = list(zip(df["Kode Saham"], df["Date"], df["Penutupan"], df["Volume"], df["Nilai"], df["Foreign Sell"], df["Foreign Buy"]))
-                companies_data = set(zip(df["Kode Saham"], df["Nama Perusahaan"]))
-                _ = upsert_data_to_database(db_uri, date, companies_data, stock_summary_data)
-            except DataNotFoundError as e:
-                print(f"Error: {e}")
-            except DataExistsError as e:
-                print(f"Error: {e}")
+        try:
+            playwright_instance, browser, page = launch_browser()
+
+            for date in dates:
+                file_path = download_excel_file(temp_dir, date, page)
+                if file_path:
+                    df = pd.read_excel(file_path)
+                    df["Date"] = date
+                    stock_summary_data = list(zip(df["Kode Saham"], df["Date"], df["Penutupan"], df["Volume"], df["Nilai"], df["Foreign Sell"], df["Foreign Buy"]))
+                    companies_data = set(zip(df["Kode Saham"], df["Nama Perusahaan"]))
+                    _ = upsert_data_to_database(db_uri, date, companies_data, stock_summary_data)
+
+        finally:
+            if browser:
+                browser.close()
+            if playwright_instance:
+                playwright_instance.stop()
 
 if __name__ == "__main__":
     main()

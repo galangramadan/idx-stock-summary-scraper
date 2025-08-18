@@ -1,7 +1,17 @@
 import psycopg
-from exceptions import DataExistsError
 
 def upsert_data_to_database(db_uri: str, date: str, companies_data: set[tuple[(str, str)]], stock_summary_data: list[tuple[(str, str, int, int, int, int, int )]]):
+    """Upserts stock summary data into the database and checks for missing company data.
+
+    Args:
+        db_uri: The database connection URI string.
+        date: The date for the stock summary data (YYYY-MM-DD format).
+        companies_data: A set of tuples containing (ticker, company_name).
+        stock_summary_data: A list of tuples containing stock summary data in the format (ticker, date, close_price, volume, value, foreign_sell, foreign_buy).
+
+    Raises:
+        DataExistsError: If stock summary data for the given date already exists in the database.
+    """
     with psycopg.connect(db_uri) as conn:
         with conn.cursor() as cur:
             _ = cur.execute(
@@ -11,7 +21,7 @@ def upsert_data_to_database(db_uri: str, date: str, companies_data: set[tuple[(s
             missing_companies_data = companies_data - current_companies_data
 
             if missing_companies_data:
-                print("Found missing companies.")
+                print("Found missing company data.")
                 for company_data in missing_companies_data:
                     ticker = company_data[0]
                     company_name = company_data[1]
@@ -46,7 +56,8 @@ def upsert_data_to_database(db_uri: str, date: str, companies_data: set[tuple[(s
                     stock_summary_data
                 )
             else:
-                raise DataExistsError(f"Stock summary data for {date} are already saved in the database!")
+                print(f"Skip: Stock summary data for {date} already exists in the database!")
+                return
 
             conn.commit()
             print(f"Stock summary data for {date} has been saved successfully.")
