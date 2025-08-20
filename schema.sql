@@ -17,7 +17,7 @@ CREATE TABLE stock_summary (
 	foreign_sell BIGINT NOT NULL,
 	date DATE NOT NULL,
 	PRIMARY KEY (ticker, date),
-	CONSTRAINT fk_companies FOREIGN KEY(ticker) REFERENCES companies(ticker) ON DELETE CASCADE;
+	CONSTRAINT fk_companies FOREIGN KEY(ticker) REFERENCES companies(ticker) ON DELETE CASCADE
 );
 
 \dt
