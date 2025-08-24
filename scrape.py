@@ -1,3 +1,5 @@
+import re
+from datetime import datetime
 import pandas as pd
 from playwright.sync_api import Page
 from psycopg.connection import Connection
@@ -61,6 +63,27 @@ def save_stock_summary_data(
         print(f"Stock summary data for {date} has been saved successfully.")
 
 
+def validate_file_date(filename: str, date_str: str) -> bool:
+    file_date_match = re.search(r"(\d{8})", filename)
+
+    if file_date_match:
+        try:
+            file_date_str = file_date_match.group(1)
+            file_date = datetime.strptime(file_date_str, "%Y%m%d")
+            expected_date = datetime.strptime(date_str, "%Y-%m-%d")
+            if file_date == expected_date:
+                return True
+            else:
+                print(f"Date in filename doesn't match with {date_str}")
+                return False
+        except (ValueError, IndexError):
+            print(f"Invalid date format in filename.")
+            return False
+    else:
+        print("No date found in filename.")
+        return False
+
+
 def download_excel_file(temp_dir: str, page: Page, date: str) -> str | None:
     page.wait_for_load_state("networkidle")  # Wait for initial load.
     page.wait_for_timeout(500)
@@ -78,10 +101,15 @@ def download_excel_file(temp_dir: str, page: Page, date: str) -> str | None:
         _ = download_button.click()
 
     download = download_info.value
-    file_path = temp_dir + "/" + download.suggested_filename
-    download.save_as(file_path)
-    print(f"Stock summary file for {date} is saved to: {file_path}")
-    return file_path
+    filename = download.suggested_filename
+
+    if validate_file_date(filename, date):
+        file_path = temp_dir + "/" + download.suggested_filename
+        download.save_as(file_path)
+        print(f"Stock summary file for {date} is saved to: {file_path}")
+        return file_path
+    else:
+        return None
 
 
 def transform_data(

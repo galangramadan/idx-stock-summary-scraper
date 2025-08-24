@@ -72,6 +72,8 @@ def main():
                         )
                         _ = update_companies_data(conn, companies_data)
                         _ = save_stock_summary_data(conn, stock_summary_data, date)
+                    else:
+                        continue
 
     except Exception as e:
         print(f"Unexpected error: {e}")
